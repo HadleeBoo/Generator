@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>D&D Pure Loot Generator</title>
+<style>
+  body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#111;color:#eee}
+  header{background:#222;padding:12px;text-align:center;font-size:20px;font-weight:bold;border-bottom:2px solid #444}
+  .container{display:flex;flex-wrap:wrap;padding:12px;gap:12px}
+  .panel{background:#1b1b1b;padding:12px;border:1px solid #333;border-radius:8px;flex:1;min-width:280px}
+  label{display:block;margin:6px 0 2px;font-size:13px;color:#bbb}
+  select,input[type=number]{width:100%;padding:6px;border-radius:4px;border:1px solid #444;background:#222;color:#eee}
+  button{background:#4cafef;color:#111;padding:10px;border:none;border-radius:6px;cursor:pointer;font-weight:bold;margin-top:10px;width:100%}
+  button:hover{background:#6ccfff}
+  .loot-log{max-height:400px;overflow-y:auto;font-size:14px;background:#0d0d0d;padding:10px;border-radius:6px;border:1px solid #333}
+  .loot-item{border-bottom:1px solid #333;padding:4px 0}
+  .good{color:#4ae18f}
+  .bad{color:#e14a4a}
+  .rarity-common{color:#ccc}
+  .rarity-uncommon{color:#1eff00}
+  .rarity-rare{color:#0070dd}
+  .rarity-very-rare{color:#a335ee}
+  .rarity-legendary{color:#ff8000}
+  .healing{color:#ff4d4d;font-weight:bold}
+  .funny{color:#ffd700}
+  .price{color:#f0e68c; font-size:13px}
+</style>
+</head>
+<body>
+<header>D&D Pure Loot Generator</header>
+<div class="container">
+  <div class="panel">
+    <h3>Loot Options</h3>
+    <label>Origin</label>
+    <select id="origin">
+      <option>Chest</option>
+      <option>Enemy</option>
+      <option>Boss</option>
+      <option>Container</option>
+      <option>Pickpocket</option>
+    </select>
+    <label>Quantity</label>
+    <input type="number" id="quantity" value="3" min="1" max="50">
+    <label>Cursed / Blessed</label>
+    <select id="alignment">
+      <option>Neutral</option>
+      <option>Cursed</option>
+      <option>Blessed</option>
+    </select>
+    <label>Loot Quality</label>
+    <select id="quality">
+      <option>Common</option>
+      <option>Uncommon</option>
+      <option>Rare</option>
+      <option>Very Rare</option>
+      <option>Legendary</option>
+    </select>
+    <label>Difficulty Level</label>
+    <select id="difficulty">
+      <option>Easy</option>
+      <option>Normal</option>
+      <option>Hard</option>
+      <option>Deadly</option>
+      <option>Mythic</option>
+    </select>
+    <label>Setting</label>
+    <select id="setting">
+      <option>Dungeon</option><option>Castle</option><option>House</option><option>Swamp</option>
+      <option>Cave</option><option>Forest</option><option>Village</option><option>Desert</option>
+      <option>Mountain</option><option>Temple</option><option>Graveyard</option><option>Stronghold</option>
+      <option>Port</option><option>Tavern</option><option>Mine</option><option>Ruins</option>
+      <option>Library</option><option>Tower</option><option>Plains</option><option>Crypt</option>
+    </select>
+    <button onclick="generateLoot()">Generate Loot</button>
+    <button onclick="generateFunny()">Random Funny Items</button>
+  </div>
+
+  <div class="panel">
+    <h3>Trader Options</h3>
+    <label>Trader Type</label>
+    <select id="trader">
+      <option>None</option><option>Healer</option><option>Blacksmith</option><option>Alchemist</option>
+      <option>General Store</option><option>Magic Shop</option><option>Fletcher</option><option>Butcher</option>
+    </select>
+    <label>Randomize Stock?</label>
+    <select id="randomize">
+      <option>No</option>
+      <option>Yes</option>
+    </select>
+    <button onclick="generateShop()">Generate Shop Inventory</button>
+  </div>
+
+  <div class="panel" style="flex:2">
+    <h3>Loot Log</h3>
+    <div id="lootLog" class="loot-log"></div>
+    <button onclick="clearLog()">Clear Log</button>
+  </div>
+</div>
+
+<script>
+const srdItems = {
+  "Common":[["Potion of Healing",50],["Dagger",2],["Shortsword",10],["Club",0.1],["Leather Armor",10]],
+  "Uncommon":[["+1 Weapon",500],["Cloak of Protection",600],["Boots of Elvenkind",500],["Ring of Water Walking",550]],
+  "Rare":[["+2 Weapon",5000],["Amulet of Health",4000],["Bag of Holding",2000],["Wand of Fireballs",8000]],
+  "Very Rare":[["+3 Weapon",50000],["Rod of Absorption",60000],["Vorpal Sword",75000],["Staff of Power",65000]],
+  "Legendary":[["Ring of Three Wishes",100000],["Deck of Many Things",0],["Holy Avenger",165000],["Sphere of Annihilation",0]]
+};
+
+const funnyItems = [
+  "Rubber Chicken of Doom","Infinite Jar of Pickles","Cursed Spoon of Soup","Boots of Moonwalking",
+  "The Legendary Duck Whistle","Bag of Holding... Potatoes Only","Endless Roll of Toilet Paper",
+  "Mimic Plushie that Bites","Banana of Confusion","Socks of Static Shock"
+];
+
+function rand(arr){return arr[Math.floor(Math.random()*arr.length)];}
+
+function rarityClass(q){
+  switch(q){
+    case "Uncommon": return "rarity-uncommon";
+    case "Rare": return "rarity-rare";
+    case "Very Rare": return "rarity-very-rare";
+    case "Legendary": return "rarity-legendary";
+    default: return "rarity-common";
+  }
+}
+
+function generateLoot(){
+  const origin=document.getElementById("origin").value;
+  const qty=parseInt(document.getElementById("quantity").value);
+  const alignment=document.getElementById("alignment").value;
+  const quality=document.getElementById("quality").value;
+  const difficulty=document.getElementById("difficulty").value;
+  const setting=document.getElementById("setting").value;
+  let log=document.getElementById("lootLog");
+  for(let i=0;i<qty;i++){
+    let pool=srdItems[quality]||srdItems["Common"];
+    let [item,price]=rand(pool);
+    let spanClass=alignment==="Cursed"?"bad":alignment==="Blessed"?"good":"";
+    let rarity=rarityClass(quality);
+    if(item.toLowerCase().includes("healing")){
+      rarity="healing";
+    }
+    log.innerHTML+=`<div class="loot-item"><span class="${rarity}"><b>${item}</b></span> (${quality}) from <i>${origin}</i> in <i>${setting}</i> [${difficulty}] <span class="${spanClass}">${alignment!=="Neutral"?alignment:""}</span></div>`;
+  }
+}
+
+function generateShop(){
+  const trader=document.getElementById("trader").value;
+  if(trader==="None")return;
+  const randomize=document.getElementById("randomize").value==="Yes";
+  let stock=[];
+  if(randomize){
+    let count=3+Math.floor(Math.random()*5);
+    let qualities=Object.keys(srdItems);
+    for(let i=0;i<count;i++){
+      let q=rand(qualities);
+      let [item,price]=rand(srdItems[q]);
+      let rarity=rarityClass(q);
+      if(item.toLowerCase().includes("healing")) rarity="healing";
+      stock.push(`<span class='${rarity}'>${item}</span> <span class='price'>${price} gp</span>`);
+    }
+  }else{
+    stock=srdItems["Common"].slice(0,3).map(([it,price])=>`<span class='rarity-common'>${it}</span> <span class='price'>${price} gp</span>`);
+  }
+  let log=document.getElementById("lootLog");
+  log.innerHTML+=`<div class="loot-item"><b>${trader} Stock:</b> ${stock.join(", ")}</div>`;
+}
+
+function generateFunny(){
+  let count=1+Math.floor(Math.random()*3);
+  let log=document.getElementById("lootLog");
+  for(let i=0;i<count;i++){
+    log.innerHTML+=`<div class="loot-item"><span class="funny"><b>${rand(funnyItems)}</b></span> (Funny)</div>`;
+  }
+}
+
+function clearLog(){
+  document.getElementById("lootLog").innerHTML="";
+}
+</script>
+</body>
+</html>
